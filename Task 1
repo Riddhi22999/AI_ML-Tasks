@@ -1,0 +1,82 @@
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from scipy import stats
+
+# 1. Create a Sample Dataset
+
+data = {
+    'SaleID': range(1, 11),
+    'Date': [
+        '2025-06-01', '2025-06-02', '2025-06-03', '2025-06-04', '2025-06-05',
+        '2025-06-06', '2025-06-07', '2025-06-08', '2025-06-09', '2025-06-10'
+    ],
+    'Country': ['India', 'USA', 'India', np.nan, 'UK', 'USA', 'India', 'UK', 'UK', 'USA'],
+    'Phone': ['+91-98765', np.nan, '+91-87654', '+44-12345', '+44-67890',
+              '+1-55555', '+91-23456', '+44-33333', '+44-44444', np.nan],
+    'Website': [
+        'site1.com', 'site2.com', np.nan, 'site4.com', 'site5.com',
+        'site6.com', 'site7.com', np.nan, 'site9.com', 'site10.com'
+    ],
+    'UnitsSold': [5, 8, 2, 3, np.nan, 7, 1, 9, 4, 6]
+}
+df = pd.DataFrame(data)
+print("Initial Data:\n", df)
+
+
+# 2. Explore Missing Values
+
+print("\nMissing Values:\n", df.isnull().sum())
+
+
+# 3. Handle Missing Values
+
+# Impute numeric columns with mean
+df['UnitsSold'] = SimpleImputer(strategy='mean').fit_transform(df[['UnitsSold']])
+
+# Fill missing categorical values with defaults
+df['Phone'].fillna('Unknown', inplace=True)
+df['Website'].fillna('no_website', inplace=True)
+df['Country'].fillna('UnknownCountry', inplace=True)
+
+print("\nAfter Imputation:\n", df.isnull().sum())
+
+# 4. Encode Categorical Data
+
+le = LabelEncoder()
+df['Country_enc'] = le.fit_transform(df['Country'])
+
+
+# 5. Convert & Scale Date
+
+df['date_ts'] = pd.to_datetime(df['Date']).astype('int64') // 10**9  # convert to Unix timestamp
+df['date_ts_scaled'] = StandardScaler().fit_transform(df[['date_ts']])
+
+# 6. Detect & Remove Outliers (IQR Method)
+
+Q1 = df['UnitsSold'].quantile(0.25)
+Q3 = df['UnitsSold'].quantile(0.75)
+IQR = Q3 - Q1
+
+# Keep only rows within 1.5 * IQR
+df = df[(df['UnitsSold'] >= Q1 - 1.5 * IQR) & (df['UnitsSold'] <= Q3 + 1.5 * IQR)]
+
+
+# 7. Output Cleaned Data
+
+print("\nCleaned DataFrame:\n", df)
+
+
+# 8. Visualization
+
+plt.figure(figsize=(8, 4))
+sns.boxplot(x=df['UnitsSold'])
+plt.title('Units Sold (After Outlier Removal)')
+plt.xlabel('UnitsSold')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
