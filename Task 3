@@ -1,0 +1,188 @@
+import pandas as pd
+import numpy as np
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+
+# -------------------------------
+# Step 1: Create the Dataset
+# -------------------------------
+sales_data = {
+    'SaleID': range(1, 11),
+    'Date': [
+        '2025-06-01', '2025-06-02', '2025-06-03', '2025-06-04', '2025-06-05',
+        '2025-06-06', '2025-06-07', '2025-06-08', '2025-06-09', '2025-06-10'
+    ],
+    'Country': ['India', 'USA', 'India', None, 'UK', 'USA', 'India', 'UK', 'UK', 'USA'],
+    'Phone': ['+91-98765', None, '+91-87654', '+44-12345', '+44-67890',
+              '+1-55555', '+91-23456', '+44-33333', '+44-44444', None],
+    'Website': [
+        'site1.com', 'site2.com', None, 'site4.com', 'site5.com',
+        'site6.com', 'site7.com', None, 'site9.com', 'site10.com'
+    ],
+    'UnitsSold': [5, 8, 2, 3, None, 7, 1, 9, 4, 6]
+}
+
+sales_df = pd.DataFrame(sales_data)
+
+print("📦 Original Dataset:")
+print(sales_df)
+
+# -------------------------------
+# Step 2: Check Missing Values
+# -------------------------------
+print("\n🔍 Missing values:")
+print(sales_df.isnull().sum())
+
+# -------------------------------
+# Step 3: Handle Missing Values
+# -------------------------------
+# 3.1 Fill numeric missing value with mean
+imputer = SimpleImputer(strategy='mean')
+sales_df['UnitsSold'] = imputer.fit_transform(sales_df[['UnitsSold']])
+
+# 3.2 Fill categorical missing values with default
+sales_df['Country'].fillna('UnknownCountry', inplace=True)
+sales_df['Phone'].fillna('Unknown', inplace=True)
+sales_df['Website'].fillna('no_website', inplace=True)
+
+# -------------------------------
+# Step 4: Convert Date and Extract Features
+# -------------------------------
+sales_df['Date'] = pd.to_datetime(sales_df['Date'])
+sales_df['Day'] = sales_df['Date'].dt.day
+sales_df['Month'] = sales_df['Date'].dt.month
+sales_df['Weekday'] = sales_df['Date'].dt.weekday
+
+# -------------------------------
+# Step 5: Label Encoding
+# -------------------------------
+label_encoders = {}
+for col in ['Country', 'Phone', 'Website']:
+    le = LabelEncoder()
+    sales_df[col + '_enc'] = le.fit_transform(sales_df[col])
+    label_encoders[col] = le
+
+# -------------------------------
+# Step 6: Scale Numeric Feature
+# -------------------------------
+scaler = StandardScaler()
+sales_df['UnitsSold_scaled'] = scaler.fit_transform(sales_df[['UnitsSold']])
+
+# -------------------------------
+# Step 7: Final Output
+# -------------------------------
+print("\n✅ Cleaned and Preprocessed DataFrame:")
+print(sales_df)
+
+print("\n📉 Missing values after preprocessing:")
+print(sales_df.isnull().sum())
+
+from sklearn.model_selection import train_test_split
+
+# -------------------------------
+# Step 8: Prepare Features and Target
+# -------------------------------
+
+# Select features (you can customize this)
+feature_cols = ['Country_enc', 'Phone_enc', 'Website_enc', 'Day', 'Month', 'Weekday']
+X = sales_df[feature_cols]
+
+# Target variable
+y = sales_df['UnitsSold']
+
+# -------------------------------
+# Step 9: Split into Train and Test Sets
+# -------------------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# -------------------------------
+# Step 10: Print Shapes to Confirm
+# -------------------------------
+print("\n📊 Data Shapes:")
+print("X_train:", X_train.shape)
+print("X_test :", X_test.shape)
+print("y_train:", y_train.shape)
+print("y_test :", y_test.shape)
+
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+# -------------------------------
+# Step 11: Initialize and Fit the Model
+# -------------------------------
+lr_model = LinearRegression()
+lr_model.fit(X_train, y_train)
+
+# -------------------------------
+# Step 12: Make Predictions
+# -------------------------------
+y_pred = lr_model.predict(X_test)
+
+# -------------------------------
+# Step 13: Evaluate the Model
+# -------------------------------
+mae = mean_absolute_error(y_test, y_pred)
+rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+r2 = r2_score(y_test, y_pred)
+
+print("\n📈 Model Evaluation:")
+print("Mean Absolute Error (MAE):", round(mae, 2))
+print("Root Mean Squared Error (RMSE):", round(rmse, 2))
+print("R² Score:", round(r2, 2))
+
+# Optional: Show actual vs predicted
+comparison_df = pd.DataFrame({
+    'Actual': y_test.values,
+    'Predicted': np.round(y_pred, 2)
+})
+print("\n🆚 Actual vs Predicted:\n", comparison_df)
+
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import numpy as np
+
+# -------------------------------
+# Step: Model Evaluation
+# -------------------------------
+
+# Calculate metrics
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+
+# -------------------------------
+# Display results
+# -------------------------------
+print("📊 Model Evaluation Metrics:")
+print(f"Mean Absolute Error (MAE): {mae:.2f}")
+print(f"Mean Squared Error (MSE): {mse:.2f}")
+print(f"R² Score: {r2:.2f}")
+
+import matplotlib.pyplot as plt
+
+# Re-train model on single feature (e.g., 'Day') for visualization
+X_day = X[['Day']]
+model_day = LinearRegression()
+model_day.fit(X_day, y_train)
+y_day_pred = model_day.predict(X_day)
+
+# Plot
+plt.figure(figsize=(8, 5))
+plt.scatter(X_day, y_train, color='blue', label='Actual UnitsSold')
+plt.plot(X_day, y_day_pred, color='red', linewidth=2, label='Regression Line')
+plt.xlabel("Day")
+plt.ylabel("Units Sold")
+plt.title("Linear Regression: UnitsSold vs Day")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# Coefficients from the full model (not the 'Day' one)
+print("🔢 Linear Regression Coefficients:")
+for feat, coef in zip(X.columns, lr_model.coef_):
+    print(f"{feat}: {coef:.4f}")
+
+print("\n🎯 Intercept:", lr_model.intercept_)
+
