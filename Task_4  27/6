@@ -1,0 +1,112 @@
+# logistic_regression_clean.py
+
+import matplotlib
+matplotlib.use('Agg')  # Non-GUI backend to avoid Tkinter issues
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+import numpy as np
+
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (
+    accuracy_score, confusion_matrix, classification_report,
+    precision_score, recall_score, f1_score, roc_auc_score, roc_curve
+)
+
+# ----------------------------
+# 1. Load Dataset
+# ----------------------------
+data = load_breast_cancer()
+X = pd.DataFrame(data.data, columns=data.feature_names)
+y = pd.Series(data.target)  # 0 = malignant, 1 = benign
+
+# ----------------------------
+# 2. Train-Test Split
+# ----------------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, stratify=y, random_state=42
+)
+
+# ----------------------------
+# 3. Standardize Features
+# ----------------------------
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# ----------------------------
+# 4. Train Logistic Regression
+# ----------------------------
+model = LogisticRegression(max_iter=1000, random_state=42)
+model.fit(X_train_scaled, y_train)
+
+# ----------------------------
+# 5. Predictions
+# ----------------------------
+y_pred = model.predict(X_test_scaled)
+y_proba = model.predict_proba(X_test_scaled)[:, 1]  # Probabilities
+
+# ----------------------------
+# 6. Evaluation Metrics
+# ----------------------------
+
+# Confusion Matrix
+cm = confusion_matrix(y_test, y_pred)
+plt.figure(figsize=(6, 4))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+            xticklabels=['Malignant', 'Benign'],
+            yticklabels=['Malignant', 'Benign'])
+plt.title('Confusion Matrix')
+plt.xlabel('Predicted Label')
+plt.ylabel('True Label')
+plt.tight_layout()
+plt.savefig("confusion_matrix.png")
+
+# Classification Report and Scores
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
+print("Precision:", precision_score(y_test, y_pred))
+print("Recall:", recall_score(y_test, y_pred))
+print("F1 Score:", f1_score(y_test, y_pred))
+
+# ROC Curve & AUC
+fpr, tpr, thresholds = roc_curve(y_test, y_proba)
+auc_score = roc_auc_score(y_test, y_proba)
+plt.figure(figsize=(6, 4))
+plt.plot(fpr, tpr, label=f"AUC = {auc_score:.2f}")
+plt.plot([0, 1], [0, 1], linestyle='--', color='gray')
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig("roc_curve.png")
+
+print("ROC AUC Score:", auc_score)
+
+# ----------------------------
+# 7. Threshold Tuning
+# ----------------------------
+print("\nThreshold  Precision  Recall  F1")
+print("-" * 35)
+for t in np.arange(0.1, 0.9, 0.1):
+    y_thresh = (y_proba >= t).astype(int)
+    prec = precision_score(y_test, y_thresh)
+    rec = recall_score(y_test, y_thresh)
+    f1 = f1_score(y_test, y_thresh)
+    print(f"{t:.1f}       {prec:.3f}     {rec:.3f}   {f1:.3f}")
+
+# ----------------------------
+# 8. Sigmoid Function Explained
+# ----------------------------
+"""
+Sigmoid Function:
+    The sigmoid function is used in logistic regression to map real values to [0, 1]:
+    σ(z) = 1 / (1 + exp(-z))
+
+    It outputs the probability that a given input belongs to the positive class.
+    By default, predictions use a threshold of 0.5, but this can be tuned.
+"""
